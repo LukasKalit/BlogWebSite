@@ -1,0 +1,89 @@
+{% extends 'base.html' %}
+
+{% block content %}
+{% include "header.html" %}
+  <!-- Page Header -->
+  {% set url = url_for('static', path='img/edit-bg.jpg') %}
+  <header class="masthead" style="background-image: url({{url}})">
+    <div class="overlay"></div>
+    <div class="container">
+      <div class="row">
+        <div class="col-lg-8 col-md-10 mx-auto">
+          <div class="page-heading">
+            {% if editing == true %}
+              <h1>Edit Post</h1>
+            {% else %}
+              <h1>New Post</h1>
+            {% endif %}
+            <span class="subheading">You're going to make a great blog post!</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <div class="container">
+    <script src="https://cdn.ckeditor.com/ckeditor5/36.0.1/classic/ckeditor.js"></script>
+
+    <div class="row">
+      <div class="col-lg-8 col-md-10 mx-auto">
+        
+          <form method="POST" novalidate>
+            {{ form.csrf_token }}
+
+            <div class="mb-2">
+              <label class="form-label">{{form.title.label}}</label>
+              {{form.title(placeholder='Title',class='form-control', autofocus='true')}}
+              <span>{{form.title.errors[0]}}</span>
+            </div>
+
+            <div class="mb-2">
+              <label class="form-label">{{form.subtitle.label}}</label>
+              {{form.subtitle(class='form-control')}}
+              <span>{{form.subtitle.errors[0]}}</span>
+            </div>
+
+            <div class="mb-2">
+              <label class="form-label">{{form.author.label}}</label>
+              {{form.author(class='form-control')}}
+              <span>{{form.author.errors[0]}}</span>
+            </div>
+
+            <div class="mb-2">
+              <label class="form-label">{{form.img_url.label}}</label>
+              {{form.img_url(class='form-control')}}
+              <span>{{form.img_url.errors[0]}}</span>
+            </div>
+
+            <div class="mb-2">
+              <label class="form-label">Blog Content</label>
+              <div id="ckcontainer">
+                  <textarea id="editor" class="ckeditor" id='body' name='body'>
+                      {{body_text.body}}
+                  </textarea>
+              </div>
+            </div>
+
+            <div type="submit" class="mt-4">
+              <p>{{form.submit(placeholder='Sample text', class='btn btn-primary')}}</p>
+              
+            </div>
+
+          </form>
+
+          <script>
+            ClassicEditor
+                .create( document.querySelector( '#editor' ) )
+                .catch( error => {
+                    console.error( error );
+                } );
+
+          </script>
+
+
+      </div>
+    </div>
+  </div>
+
+{% include "footer.html" %}
+{% endblock %}
