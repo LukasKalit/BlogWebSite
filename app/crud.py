@@ -49,7 +49,12 @@ def get_all_posts(db: Session):
     return db.scalars(select(models.BlogPost)).all()
 
 def get_post(db: Session, id_post: int):
-    return db.scalars(select(models.BlogPost).filter(models.BlogPost.id == id_post)).first()
+    print(id_post)
+    
+    data = db.execute(select(models.BlogPost).where(models.BlogPost.id == id_post)).first()
+
+
+    return data[0]
 
 def get_post_by_title(db: Session, title: str):
     return db.scalars(select(models.BlogPost).filter(models.BlogPost.title == title)).first()
@@ -71,6 +76,7 @@ def update_post(db: Session, post_data: schemas.EntirePost, post_id: int):
         body = post_data.body,
         author = post_data.author,
         img_url = post_data.img_url,
+        owner_id = post_data.owner_id
     ))
     db.commit()
     return

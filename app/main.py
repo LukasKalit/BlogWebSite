@@ -223,9 +223,13 @@ async def show_post(request: Request, index:int, db:Session = Depends(database.g
 
 @app.get("/delete/{id}")
 @security.expired_redirection
-def delete_post(id = int, db:Session = Depends(database.get_db), current_user:schemas.User = Depends(security.get_current_user_required)):
+@security.owner_privilages
+async def delete_post(id = int, db:Session = Depends(database.get_db), current_user:schemas.User = Depends(security.get_current_user_required)):
+    
     if crud.delete_post(db,id) == False:
         raise HTTPException(status_code=404, detail="Post not found")
+    else:
+        pass
     response = RedirectResponse(url='/')
     response.status_code = 302
     return response
@@ -237,7 +241,7 @@ def delete_post(id = int, db:Session = Depends(database.get_db), current_user:sc
 async def new_post(request:Request, current_user:schemas.User = Depends(security.get_current_user_required)):
     form = await schemas.CreatePostForm.from_formdata(request)
     body_text = schemas.PostBase()
-    return templates.TemplateResponse('make-post.html', {'request':request, "form":form, "body_text":body_text})
+    return templates.TemplateResponse('make-post.html', {'request':request, "form":form, "body_text":body_text, "logged_in" : current_user})
 
 @app.post("/new_post/")
 @security.expired_redirection
@@ -245,19 +249,23 @@ async def new_post(request:Request, current_user:schemas.User = Depends(security
 async def new_post(request:Request,
                    db: Session = Depends(database.get_db), 
                    body_text: schemas.PostBase = Depends(schemas.PostBase.as_form),
-                   current_user:schemas.User = Depends(security.get_current_user_required)):
+                   current_user: schemas.User = Depends(security.get_current_user_required)):
     form = await schemas.CreatePostForm.from_formdata(request)
 
     
     if await form.validate_on_submit():
+
         # make validation for fastapi form
         print("validete happen")
+        print(current_user.id)
         post_data = schemas.EntirePost(
             title = form.title.data,
             subtitle = form.subtitle.data,
             author = form.author.data,
             img_url = form.img_url.data,
-            body= body_text.body
+            body = body_text.body,
+            owner_id = current_user.id
+
         )
         crud.create_post(db=db, post_data=post_data)
         post = crud.get_post_by_title(db, post_data.title)
@@ -309,7 +317,8 @@ async def edit_post(request:Request,
             subtitle = form.subtitle.data,
             author = form.author.data,
             img_url = form.img_url.data,
-            body= body_text.body
+            body = body_text.body,
+            owner_id = current_user.id
         )
         print(post_data.author)
         crud.update_post(db, post_data, post_id)

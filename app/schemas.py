@@ -34,6 +34,7 @@ class EntirePost(PostBase):
     subtitle : str
     author : str
     img_url: str
+    owner_id: int
 
     class Config:
         orm_mode = True

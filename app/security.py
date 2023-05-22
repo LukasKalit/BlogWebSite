@@ -49,7 +49,7 @@ class OAuth2PasswordBearerWithCookie(OAuth2):
 
 SECRET_KEY = "b02a28fa93c2e6f49b7060483aae1a55050db8e7fea1b53c4efe4ea999e89bd8"
 ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 1
+ACCESS_TOKEN_EXPIRE_MINUTES = 30
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
@@ -132,7 +132,8 @@ def get_current_user_required(user: Union[schemas.User, None] = Depends(get_curr
 
 from functools import wraps
 
-def editing_privilages_decorator(original_function):
+# Under work
+def admin_privilages(original_function):
     @wraps(original_function)
     async def wrapper_function(*args, **kwargs):
         print(kwargs["current_user"])
@@ -145,7 +146,7 @@ def editing_privilages_decorator(original_function):
             print("you can edit?")
         return await original_function(*args, **kwargs)
     return wrapper_function
-
+# -----------------
 
 def expired_redirection(original_function):
     @wraps(original_function)
@@ -155,4 +156,20 @@ def expired_redirection(original_function):
             response.status_code = 302  
             return response
         return await original_function(**kwargs)
+    return wrapper_function
+
+
+def owner_privilages(original_function):
+    @wraps(original_function)
+    def wrapper_function(**kwargs):
+        data = crud.get_post(kwargs["db"], kwargs["id"])
+        print(data)
+        if kwargs["current_user"].id == data.owner_id:
+            return original_function(**kwargs)
+        else:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="An authenticated user is required for that action.",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
     return wrapper_function

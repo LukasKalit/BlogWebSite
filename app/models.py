@@ -14,6 +14,7 @@ class BlogPost(Base):
     body = Column(Text, nullable=False)
     author = Column(String(250), nullable=False)
     img_url = Column(String(250), nullable=False)
+    owner_id = Column(Integer, ForeignKey("users.id"))
 
 
 class Users(Base):
@@ -23,3 +24,4 @@ class Users(Base):
     email = Column(String(250), unique=True)
     name = Column(String(250), unique=True)
     password = Column(String(200))
+    
