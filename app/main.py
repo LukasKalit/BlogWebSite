@@ -40,7 +40,9 @@ def get_gravatar_url(email, size=100, default='identicon', rating='g'):
 
 # Security path
 @app.post("/token", response_model=schemas.Token)
-async def login_for_access_token(request: Request, form_data: OAuth2PasswordRequestForm = Depends(), db:Session = Depends(database.get_db)):
+async def login_for_access_token(request: Request, 
+                                 form_data: OAuth2PasswordRequestForm = Depends(), 
+                                 db:Session = Depends(database.get_db)):
     user = security.authenticate_user(form_data.username, form_data.password, db)
     if not user:
         raise HTTPException(
@@ -56,8 +58,10 @@ async def login_for_access_token(request: Request, form_data: OAuth2PasswordRequ
 
 
 # Endpoints
+
 @app.get('/')
-def get_all_posts(request:Request, db: Session = Depends(database.get_db),
+def get_all_posts(request:Request, 
+                  db: Session = Depends(database.get_db),
                   current_user: schemas.User = Depends(security.get_current_user)):
     if current_user == "expired":
         current_user = None
@@ -102,13 +106,9 @@ async def login(request:Request,
     elif not security.authenticate_user(form.email, form.password, db):
         msg = "Invalid login or password"
 
-
     else:
-        print(form)
         user_oath = schemas.baseaccount_to_oath(form)
-        print(user_oath)
         token = await login_for_access_token(request=request, form_data=user_oath, db=db)
-        # print(token)
 
         if token:
             redirect_url = request.url_for('get_all_posts')
@@ -116,8 +116,6 @@ async def login(request:Request,
             response.set_cookie(key="access_token",value= f"Bearer {token['access_token']}", secure=True, httponly=True)
             response.status_code = 302  
             return response
-
-
 
     return templates.TemplateResponse("login.html", {"request": request,"user":"", "msg":msg})
 
@@ -129,11 +127,10 @@ def register(request:Request):
     return templates.TemplateResponse("register.html", {"request": request,"user":user, "msg":msg})
 
 @app.post('/register')
-def register(request:Request, db:Session = Depends(database.get_db), user:schemas.User = Depends(schemas.User.register_as_form)):
+def register(request:Request, 
+             db:Session = Depends(database.get_db), 
+             user:schemas.User = Depends(schemas.User.register_as_form)):
     msg=""
-    print(user.name)
-    print(user.email)
-    print(user.password)
 
     if not user.name:
         msg = "Please insert loggin"
@@ -149,12 +146,8 @@ def register(request:Request, db:Session = Depends(database.get_db), user:schema
     elif not crud.get_user_by_name(db, user.name):
         user.password = security.get_password_hash(user.password)
         user.avatar_url = get_gravatar_url(user.email)
-        if crud.register_user(db, user):
-            user_data = crud.get_user_by_email(db, user.email)
-
-            print(user_data.id)
-            # te gwiazdki to chyba dodatkowy argument do redirected
-            
+        
+        if crud.register_user(db, user):            
             redirect_url = request.url_for('login')
             response = RedirectResponse(redirect_url)
             response.status_code = 302
@@ -165,7 +158,6 @@ def register(request:Request, db:Session = Depends(database.get_db), user:schema
         msg = "Name in data base already exist."
 
     return templates.TemplateResponse("register.html", {"request": request,"user":user, "msg":msg})
-
 
 
 @app.get("/logout")
@@ -218,7 +210,6 @@ async def send_comment(request: Request,
         #This can be replace by crud
         if blog_post.id == index:
             requested_post = blog_post
-            print(requested_post.id)
 
     dt =datetime.now()
     comment_model = schemas.EntireComment(
@@ -246,7 +237,9 @@ async def send_comment(request: Request,
 # @security.admin_privilages
 @security.expired_redirection
 @security.owner_privilages
-async def delete_post(id = int, db:Session = Depends(database.get_db), current_user:schemas.User = Depends(security.get_current_user_required)):
+async def delete_post(id = int, 
+                      db:Session = Depends(database.get_db), 
+                      current_user:schemas.User = Depends(security.get_current_user_required)):
     
     if crud.delete_post(db,id) == False:
         raise HTTPException(status_code=404, detail="Post not found")
@@ -261,7 +254,8 @@ async def delete_post(id = int, db:Session = Depends(database.get_db), current_u
 
 @app.get("/new_post/")
 @security.expired_redirection
-async def new_post(request:Request, current_user:schemas.User = Depends(security.get_current_user_required)):
+async def new_post(request:Request, 
+                   current_user:schemas.User = Depends(security.get_current_user_required)):
     form = await schemas.CreatePostForm.from_formdata(request)
     body_text = schemas.PostBase()
     return templates.TemplateResponse('make-post.html', {'request':request, "form":form, "body_text":body_text, "logged_in" : current_user})
@@ -274,12 +268,9 @@ async def new_post(request:Request,
                    current_user: schemas.User = Depends(security.get_current_user_required)):
     form = await schemas.CreatePostForm.from_formdata(request)
 
-    
     if await form.validate_on_submit():
 
         # make validation for fastapi form
-        print("validete happen")
-        print(current_user.id)
         post_data = schemas.EntirePost(
             title = form.title.data,
             subtitle = form.subtitle.data,
@@ -287,15 +278,14 @@ async def new_post(request:Request,
             img_url = form.img_url.data,
             body = body_text.body,
             owner_id = current_user.id
-
         )
+
         crud.create_post(db=db, post_data=post_data)
         post = crud.get_post_by_title(db, post_data.title)
         response = RedirectResponse(url=f'/post/{post.id}')
         response.status_code = 302
         return response
 
-    print('returning templates')
     return templates.TemplateResponse('make-post.html', {'request':request, "form":form, "body_text":body_text})
 
 # EDIT POST
@@ -334,7 +324,6 @@ async def edit_post(request:Request,
     
     if await form.validate_on_submit():
         # make validation for fastapi form
-        print("validete happen")
         post_data = schemas.EntirePost(
             title = form.title.data,
             subtitle = form.subtitle.data,
@@ -343,14 +332,13 @@ async def edit_post(request:Request,
             body = body_text.body,
             owner_id = current_user.id
         )
-        print(post_data.author)
+
         crud.update_post(db, post_data, id)
         post = crud.get_post_by_title(db, post_data.title)
         response = RedirectResponse(url=f'/post/{post.id}')
         response.status_code = 302
         return response
 
-    print('returning templates')
     return templates.TemplateResponse('make-post.html', {'request':request, "form":form, "body_text":body_text, "editing":editing})
 
 
