@@ -5,6 +5,7 @@ from . import models, schemas
 
 import datetime
 
+# =======================USERS=========================
 
 def register_user(db: Session, user: schemas.User):
     new_user = models.Users(**user.dict())
@@ -40,11 +41,8 @@ def get_user_by_name(db: Session, username: str):
 
 
 
+# =======================POSTS=========================
 
-
-
-
-# ================================================
 def get_all_posts(db: Session):
     return db.scalars(select(models.BlogPost)).all()
 
@@ -82,9 +80,23 @@ def update_post(db: Session, post_data: schemas.EntirePost, post_id: int):
     return
 
 def delete_post(db: Session, post_id:str):
-    try:
+
         db.execute(delete(models.BlogPost).where(models.BlogPost.id == post_id))
         db.commit()
         return True
-    except:
-        return False
+
+    
+
+# =======================COMMENTS=========================
+
+def add_comment(db: Session, comment_data: schemas.EntireComment):
+    comment = models.Comment(**comment_data.dict())
+    db.add(comment)
+    db.commit()
+    db.refresh(comment)
+    return
+
+def get_comments_to_post(db: Session, post_id: int):
+    stmt = select(models.Comment).filter(models.Comment.post_id == post_id).order_by(models.Comment.date)
+    comment = db.execute(stmt).all()
+    return comment

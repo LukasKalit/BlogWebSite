@@ -1,4 +1,4 @@
-from sqlalchemy import Boolean, Column, ForeignKey, Integer, String, Text
+from sqlalchemy import Boolean, Column, ForeignKey, Integer, String, Text, DateTime
 from sqlalchemy.orm import relationship
 
 from .database import Base
@@ -24,4 +24,14 @@ class Users(Base):
     email = Column(String(250), unique=True)
     name = Column(String(250), unique=True)
     password = Column(String(200))
+    avatar_url = Column(Text)
+    
+class Comment(Base):
+    __tablename__ = "comments"
+
+    id = Column(Integer, primary_key=True)
+    text = Column(Text, nullable=False)
+    date = Column(DateTime, nullable=False)
+    owner_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    post_id = Column(Integer, ForeignKey("blog_post.id"), nullable=False)
     

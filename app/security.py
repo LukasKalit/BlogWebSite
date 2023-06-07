@@ -136,14 +136,7 @@ from functools import wraps
 def admin_privilages(original_function):
     @wraps(original_function)
     async def wrapper_function(*args, **kwargs):
-        print(kwargs["current_user"])
-
-        if kwargs["current_user"] == "None":
-            print("None")
-        elif kwargs["current_user"] == "expired":
-            print("eeeexpired")
-        else:
-            print("you can edit?")
+        pass
         return await original_function(*args, **kwargs)
     return wrapper_function
 # -----------------
@@ -157,7 +150,6 @@ def expired_redirection(original_function):
             return response
         return await original_function(**kwargs)
     return wrapper_function
-
 
 def owner_privilages(original_function):
     @wraps(original_function)

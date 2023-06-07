@@ -8,11 +8,11 @@
         <div class="col-lg-8 col-md-10 mx-auto">
           <div class="site-heading">
             {% if logged_in %}
-            <h1>Hello User</h1>
+            <h1>Hello {{logged_in.name}}</h1>
             {% else %}
-            <h1>Angela's Blog</h1>
+            <h1>Lukas Blog</h1>
             {% endif %}
-            <span class="subheading">A collection of Angela's random musings.</span>
+            <span class="subheading">A boring blog for learning coding.</span>
           </div>
         </div>
       </div>

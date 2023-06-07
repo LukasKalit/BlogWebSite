@@ -16,7 +16,9 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
 from fastapi.security import OAuth2PasswordRequestForm
-from datetime import timedelta
+from datetime import timedelta, datetime
+
+import urllib, hashlib
 
 models.Base.metadata.create_all(bind=engine)
 
@@ -25,9 +27,15 @@ app = FastAPI(middleware=[
     Middleware(CSRFProtectMiddleware, csrf_secret='***REPLACEME2***')
 ])
 
+
 app.mount("/static", StaticFiles(directory="static"), name="static")
 templates = Jinja2Templates(directory="templates")
 
+
+def get_gravatar_url(email, size=100, default='identicon', rating='g'):
+    email_hash = hashlib.md5(email.lower().encode('utf-8')).hexdigest()
+    gravatar_url = f"https://www.gravatar.com/avatar/{email_hash}?s={size}&d={default}&r={rating}"
+    return gravatar_url
 
 
 # Security path
@@ -63,7 +71,12 @@ def about(request:Request):
 
     return templates.TemplateResponse("about.html", {'request':request})
 
+@app.get("/contact")
+def contact(request:Request):
+    return templates.TemplateResponse("contact.html", {'request':request})
 
+
+# USERS SERVICE
 
 @app.get('/login')
 def login(request:Request):
@@ -109,11 +122,6 @@ async def login(request:Request,
     return templates.TemplateResponse("login.html", {"request": request,"user":"", "msg":msg})
 
 
-
-
-
-
-
 @app.get('/register')
 def register(request:Request):
     msg=""
@@ -140,6 +148,7 @@ def register(request:Request, db:Session = Depends(database.get_db), user:schema
 
     elif not crud.get_user_by_name(db, user.name):
         user.password = security.get_password_hash(user.password)
+        user.avatar_url = get_gravatar_url(user.email)
         if crud.register_user(db, user):
             user_data = crud.get_user_by_email(db, user.email)
 
@@ -159,14 +168,6 @@ def register(request:Request, db:Session = Depends(database.get_db), user:schema
 
 
 
-
-
-
-
-
-
-
-
 @app.get("/logout")
 async def logout():
     response = RedirectResponse(url="/")
@@ -175,53 +176,74 @@ async def logout():
     response.delete_cookie("session")
     return response
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 # HANDLING POST
+
 @app.get("/post/{index}")
-async def show_post(request: Request, index:int, db:Session = Depends(database.get_db)):
+async def show_post(request: Request, 
+                    index:int, 
+                    db:Session = Depends(database.get_db), 
+                    current_user: schemas.User = Depends(security.get_current_user)):
+    
+    if current_user == "expired":
+        current_user = None
+
     requested_post = None
     posts = crud.get_all_posts(db)
     for blog_post in posts:
         #This can be replace by crud
         if blog_post.id == index:
             requested_post = blog_post
-    return templates.TemplateResponse("post.html", {"request":request, 'requested_post' : requested_post})
+
+    comments = crud.get_comments_to_post(db= db, post_id= requested_post.id)
+    comments = [item[0] for item in comments]
+
+    for i in range(len(comments)):
+        avatar = crud.get_user_by_id(db=db, id=comments[i].owner_id).avatar_url
+        comments[i].avatar_url = avatar
+        comments[i] = schemas.AvatarComment(**comments[i].__dict__)
+
+    return templates.TemplateResponse("post.html", {"request": request, 'requested_post': requested_post, "logged_in": current_user, "comments": comments})
+
+@app.post("/post/{index}")
+@security.expired_redirection
+async def send_comment(request: Request, 
+                       index:int, 
+                       db: Session = Depends(database.get_db), 
+                       comment:schemas.CommentText = Depends(schemas.CommentText.as_form), 
+                       current_user: schemas.User = Depends(security.get_current_user_required)):
+
+    requested_post = None
+    posts = crud.get_all_posts(db)
+    for blog_post in posts:
+        #This can be replace by crud
+        if blog_post.id == index:
+            requested_post = blog_post
+            print(requested_post.id)
+
+    dt =datetime.now()
+    comment_model = schemas.EntireComment(
+        **comment.dict(),
+        # text = comment.text,
+        date = dt.strftime("%Y-%m-%d %H:%M:%S"),
+        owner_id = current_user.id,
+        post_id = requested_post.id
+        )
+    crud.add_comment(db=db, comment_data=comment_model) 
+
+    comments = crud.get_comments_to_post(db= db, post_id= requested_post.id)
+    comments = [item[0] for item in comments]
+
+    for i in range(len(comments)):
+        avatar = crud.get_user_by_id(db=db, id=comments[i].owner_id).avatar_url
+        comments[i].avatar_url = avatar
+        comments[i] = schemas.AvatarComment(**comments[i].__dict__)
+
+    return templates.TemplateResponse("post.html", {"request": request, 'requested_post': requested_post, "logged_in": current_user, "comments": comments})
+
 
 
 @app.get("/delete/{id}")
+# @security.admin_privilages
 @security.expired_redirection
 @security.owner_privilages
 async def delete_post(id = int, db:Session = Depends(database.get_db), current_user:schemas.User = Depends(security.get_current_user_required)):
@@ -236,6 +258,7 @@ async def delete_post(id = int, db:Session = Depends(database.get_db), current_u
 
 
 # NEW POST
+
 @app.get("/new_post/")
 @security.expired_redirection
 async def new_post(request:Request, current_user:schemas.User = Depends(security.get_current_user_required)):
@@ -245,7 +268,6 @@ async def new_post(request:Request, current_user:schemas.User = Depends(security
 
 @app.post("/new_post/")
 @security.expired_redirection
-# @csrf_protect
 async def new_post(request:Request,
                    db: Session = Depends(database.get_db), 
                    body_text: schemas.PostBase = Depends(schemas.PostBase.as_form),
@@ -278,14 +300,15 @@ async def new_post(request:Request,
 
 # EDIT POST
 
-@app.get('/edit/{post_id}')
-# @security.editing_privilages_decorator
+@app.get('/edit/{id}')
+# @security.admin_privilages
 @security.expired_redirection
+@security.owner_privilages
 async def edit_post(request:Request, 
-                    post_id : int, 
+                    id : int, 
                     db : Session = Depends(database.get_db), 
                     current_user:schemas.User = Depends(security.get_current_user_required)):
-    crud_data = crud.get_post(db, post_id)
+    crud_data = crud.get_post(db, id)
     form = await schemas.CreatePostForm.from_formdata(request)
     form.title.data = crud_data.title
     form.subtitle.data = crud_data.subtitle
@@ -297,12 +320,12 @@ async def edit_post(request:Request,
     return templates.TemplateResponse('make-post.html', {'request':request, "form":form, "body_text":body_text, "editing":editing})
 
 
-@app.post('/edit/{post_id}')
-# @security.editing_privilages_decorator
+@app.post('/edit/{id}')
+# @security.admin_privilages
 @security.expired_redirection
-# @csrf_protect
+@security.owner_privilages
 async def edit_post(request:Request, 
-                    post_id: int, 
+                    id: int, 
                     db: Session = Depends(database.get_db), 
                     body_text: schemas.PostBase = Depends(schemas.PostBase.as_form),
                     current_user:schemas.User = Depends(security.get_current_user_required)):
@@ -321,7 +344,7 @@ async def edit_post(request:Request,
             owner_id = current_user.id
         )
         print(post_data.author)
-        crud.update_post(db, post_data, post_id)
+        crud.update_post(db, post_data, id)
         post = crud.get_post_by_title(db, post_data.title)
         response = RedirectResponse(url=f'/post/{post.id}')
         response.status_code = 302
@@ -329,16 +352,5 @@ async def edit_post(request:Request,
 
     print('returning templates')
     return templates.TemplateResponse('make-post.html', {'request':request, "form":form, "body_text":body_text, "editing":editing})
-
-
-
-
-
-@app.get("/contact")
-def contact(request:Request):
-    return templates.TemplateResponse("contact.html", {'request':request})
-
-
-
 
 

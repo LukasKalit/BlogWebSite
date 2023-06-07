@@ -26,14 +26,72 @@
           <p>
             {{requested_post.body|safe}}
           </p>
-           <hr>
-           <div class="clearfix">
-          <a class="btn btn-primary float-right" href="{{url_for('edit_post', post_id=requested_post.id)}}">Edit Post</a>
-        </div>
+          <hr>
+          {% if logged_in %}
+          <div class="clearfix">
+            <a class="btn btn-primary float-right" href="{{url_for('edit_post', id=requested_post.id)}}">Edit Post</a>
           </div>
+          {% endif %}
+        </div>
       </div>
     </div>
   </article>
+
+  <comments>
+    <div class="container">
+
+        <div class="row">
+          <div class="col-lg-8 col-md-10 mx-auto">
+            <form method="POST" novalidate>
+              <label class="form-label" for="text">Write your comment</label>
+
+
+              <textarea id="editor" class="ckeditor" name="text">This is some sample content.</textarea>
+
+
+              <button type="submit" class="btn btn-primary float-right mt-4" href="{{url_for('send_comment', index=requested_post.id)}}">Send comment</a>
+            
+            </form>
+          </div>
+        </div>
+
+        <div class="row">
+          <div class="col-lg-10 col-md-10 mx-auto mb-0">
+            <label class="form-label" for="comments">Comments</label>
+
+            {% for i in comments%}
+            <div class="row flex-fix mt-4, mb-0">
+              <hr>
+              <div class="col-sm-3">
+                <img class="img-thumbnail" src="{{ i.avatar_url }}" alt="Avatar">
+              </div>
+              
+              <div class="col-sm-9">
+                {{i.text|safe}}
+                <p id="DataContainer" class="fs-2 mt-0, mb-4">{{i.date}} </p>
+              </div>
+              <hr>
+
+            </div>
+            {% endfor %}
+
+          </div>
+        </div>
+      </div>
+
+    <script src="https://cdn.ckeditor.com/ckeditor5/38.0.1/classic/ckeditor.js"></script>
+
+    <script>
+      
+      ClassicEditor
+          .create( document.querySelector( '#editor' ) )
+          .catch( error => {
+              console.error( error );
+          } );
+    </script>
+
+
+  </comments>
 
   <hr>
 {% include "footer.html" %}

@@ -4,6 +4,8 @@ from wtforms import StringField, SubmitField
 from wtforms.validators	import DataRequired, URL
 from fastapi import Form
 from typing import Union
+import datetime
+
 
 ##WTForm
 class CreatePostForm(StarletteForm):
@@ -39,6 +41,25 @@ class EntirePost(PostBase):
     class Config:
         orm_mode = True
 
+class CommentText (BaseModel):
+    text: str
+
+    @classmethod
+    async def as_form(self, text: str = Form("")):
+        return self(text=text)
+
+class EntireComment(CommentText):
+    date : datetime.datetime
+    owner_id : int
+    post_id : int
+    
+
+    class Config:
+        orm_mode = True
+
+class AvatarComment(EntireComment):
+    avatar_url: str | None
+
 
 class UserBase(BaseModel):
     email: str
@@ -65,6 +86,7 @@ def baseaccount_to_oath(form):
 
 class User(UserBase):
     name: str
+    avatar_url: str | None
 
     @classmethod
     async def register_as_form(self,
